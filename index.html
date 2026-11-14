@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SortScope — Sorting Algorithm Visualizer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Sora:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <div class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+    <div>
+      <h1>SortScope</h1>
+      <p>Watch Bubble, Selection, Insertion, Merge and Quick Sort work through the same array, step by step, with every comparison, swap and pass counted.</p>
+    </div>
+  </div>
+  <div class="topbtns">
+    <a class="btn ghost vlink" href="https://youtu.be/HGk_ypEuS24" target="_blank" rel="noopener noreferrer">▶ Watch the video</a>
+    <button id="themeBtn" class="btn ghost" type="button">Dark mode</button>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="card controls" aria-label="Array and algorithm settings">
+    <div class="cg c-mode">
+      <span class="lab">Mode</span>
+      <div class="seg" id="modeSeg">
+        <button type="button" data-mode="single" class="on">One algorithm</button>
+        <button type="button" data-mode="compare">Compare all 5</button>
+      </div>
+    </div>
+    <div class="cg c-algo">
+      <label for="algoSel">Algorithm</label>
+      <select id="algoSel">
+        <option value="bubble">Bubble Sort</option>
+        <option value="selection">Selection Sort</option>
+        <option value="insertion">Insertion Sort</option>
+        <option value="merge">Merge Sort</option>
+        <option value="quick">Quick Sort</option>
+      </select>
+    </div>
+    <div class="cg c-n">
+      <label for="nNum">Number of elements</label>
+      <div class="nrow">
+        <input type="range" id="nRange" min="2" max="50" value="12" aria-label="Number of elements slider">
+        <input type="number" id="nNum" min="2" max="50" value="12">
+      </div>
+    </div>
+    <div class="cg c-preset">
+      <span class="lab">Generate array</span>
+      <div class="seg" id="presetSeg">
+        <button type="button" data-p="random" class="on">Random</button>
+        <button type="button" data-p="nearly">Nearly sorted</button>
+        <button type="button" data-p="reverse">Reverse sorted</button>
+        <button type="button" data-p="few">Few unique</button>
+      </div>
+    </div>
+    <div class="cg c-custom">
+      <label for="customIn">Your own array</label>
+      <div class="inrow">
+        <input type="text" id="customIn" placeholder="e.g. 34, 12, -5, 8.5, 67" autocomplete="off" spellcheck="false">
+        <button type="button" id="applyBtn" class="btn">Apply</button>
+        <button type="button" id="manualBtn" class="btn ghost" aria-expanded="false">Enter one by one</button>
+      </div>
+      <div class="err" id="inErr" role="alert"></div>
+      <div class="manual" id="manualPanel" hidden>
+        <div class="mgrid" id="manualGrid"></div>
+        <button type="button" id="manualLoad" class="btn">Load array</button>
+      </div>
+    </div>
+  </section>
+
+  <div class="orig">Original array (n = <b id="origN">0</b>) <code id="origArr"></code></div>
+
+  <section class="card playbar" aria-label="Playback controls">
+    <div class="pbtns">
+      <button type="button" class="btn" id="bStart">Start</button>
+      <button type="button" class="btn ghost" id="bPause">Pause</button>
+      <button type="button" class="btn ghost" id="bResume">Resume</button>
+      <button type="button" class="btn ghost" id="bBack" aria-label="Step back">◀ Step</button>
+      <button type="button" class="btn ghost" id="bFwd" aria-label="Step forward">Step ▶</button>
+      <button type="button" class="btn ghost" id="bReset">Reset</button>
+    </div>
+    <div class="scrubwrap">
+      <input type="range" id="scrub" min="0" max="0" value="0" aria-label="Jump to step">
+      <span class="readout" id="readout">0 / 0</span>
+    </div>
+    <label class="speed">Speed <input type="range" id="speed" min="1" max="10" value="5"></label>
+    <span class="hint">Space = play/pause, ← → = step</span>
+  </section>
+
+  <!-- Single-algorithm view -->
+  <section id="singleView" class="grid-main">
+    <div class="card">
+      <div class="card-head">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <h2 id="vizTitle">Bubble Sort</h2>
+          <div class="seg" id="mviewSeg" hidden><button type="button" data-v="split" class="on">Split view</button><button type="button" data-v="bars">Bar view</button></div>
+        </div>
+        <div class="legend" id="legend"></div>
+        <div class="legend" id="legendMS" hidden><span><i style="background:#fbe7a1;border:1px solid #d9ad00"></i>Selected</span><span><i style="background:var(--cmp)"></i>Comparing</span><span><i style="background:var(--swp)"></i>Just placed</span><span><i style="background:var(--mrg)"></i>Merged so far</span><span><i style="background:var(--srt)"></i>Sorted subarray</span><span><i style="border:1.5px dashed var(--muted)"></i>Empty slot</span></div>
+      </div>
+      <div class="stage" id="mainStage">
+        <div class="plot" id="mainPlot"></div>
+        <div class="banner" id="banner"></div>
+      </div>
+      <div class="mstage" id="mStage" hidden><div class="mcanvas" id="mCanvas"></div></div>
+      <div class="idxrow" id="idxRow" aria-hidden="true"></div>
+      <div class="ptrs" id="ptrRow" aria-hidden="true"></div>
+      <div class="narr" id="narr"></div>
+    </div>
+    <aside class="side">
+      <div class="card">
+        <div class="card-head" style="margin-bottom:8px"><h3 style="margin:0">C++ code</h3><span class="sub" id="codeSub">Highlighted line is running now</span></div>
+        <ol class="code" id="code"></ol>
+      </div>
+      <div class="card">
+        <h3>Live statistics</h3>
+        <div class="stats">
+          <div class="stat"><b id="sComp">0</b><span>Comparisons</span></div>
+          <div class="stat"><b id="sWrite">0</b><span id="sWriteLbl">Swaps</span></div>
+          <div class="stat"><b id="sPass">0</b><span id="sPassLbl">Passes completed</span></div>
+          <div class="stat"><b id="sCur">—</b><span id="sCurLbl">Current pass</span></div>
+          <div class="stat"><b id="sSteps">0</b><span>Step</span></div>
+          <div class="stat"><b id="sTime">0.0s</b><span>Elapsed time</span></div>
+          <div class="stat"><b id="sN">0</b><span>Elements (n)</span></div>
+          <div class="stat"><b id="sIdx">—</b><span>Indices in focus</span></div>
+        </div>
+      </div>
+    </aside>
+  </section>
+
+  <!-- Compare view -->
+  <section id="compareView" class="card" hidden>
+    <div class="card-head">
+      <h2>All 5 algorithms on the same array</h2>
+      <div class="legend" id="legend2"></div>
+    </div>
+    <div class="mini-grid" id="miniGrid"></div>
+  </section>
+
+  <section class="two" data-single>
+    <div class="card">
+      <div class="card-head"><h2>Pass by pass</h2><span class="sub">Array after each pass</span></div>
+      <div class="tbox">
+        <table>
+          <thead><tr><th id="passTh">Pass</th><th id="passArrTh">Array after pass</th><th>Comparisons</th><th id="passWriteTh">Swaps</th></tr></thead>
+          <tbody id="passBody"></tbody>
+        </table>
+        <div class="empty" id="passEmpty">Press Start or Step ▶. Each completed pass appears here.</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h2>Step log</h2><span class="sub" id="logCount"></span></div>
+      <div class="tbox" id="logBox">
+        <table>
+          <thead><tr><th>#</th><th>Action</th><th>Indices</th><th>Values</th><th>Array state</th></tr></thead>
+          <tbody id="logBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-head"><h2>Results on this array</h2><span class="sub">Fewest total operations wins. CPU time is the average of 1,000 runs without animation.</span></div>
+    <div class="tbox tall">
+      <table>
+        <thead><tr><th>Algorithm</th><th>Comparisons</th><th>Swaps / writes</th><th>Passes</th><th>Steps</th><th>Total operations</th><th>CPU time</th></tr></thead>
+        <tbody id="resBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-head"><h2>Time and space complexity</h2></div>
+    <div class="tbox tall">
+      <table>
+        <thead><tr><th>Algorithm</th><th>Best time</th><th>Average time</th><th>Worst time</th><th>Space</th><th>Stable</th><th>In-place</th></tr></thead>
+        <tbody id="cxBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-head"><h2 id="thTitle">How Bubble Sort works</h2></div>
+    <div class="theory">
+      <div>
+        <p id="thDesc"></p>
+        <ol id="thHow"></ol>
+      </div>
+      <div class="why" id="thWhy"></div>
+    </div>
+  </section>
+
+  <section class="charts">
+    <div class="card" data-single>
+      <div class="card-head"><h2>Operations over time</h2><span class="sub">Grows as the animation runs</span></div>
+      <div class="chartbox"><canvas id="chLive"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h2>Algorithms compared</h2><span class="sub">Same input array</span></div>
+      <div class="chartbox"><canvas id="chCompare"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h2>Theoretical growth</h2><span class="sub">Dots mark your current n</span></div>
+      <div class="chartbox"><canvas id="chGrowth"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h2>Measured operations vs n</h2><button type="button" class="btn ghost" id="rerunEmp">Run again</button></div>
+      <div class="chartbox"><canvas id="chEmp"></canvas></div>
+    </div>
+  </section>
+</main>
+<footer>The animations follow the C++ code shown beside them line by line. Merge Sort and Quick Sort have a split view: Merge Sort copies each half onto the row below and merges it back up, while Quick Sort partitions each row around its pivot and then sends the two sides down to be sorted.</footer>
+
+<script src="script.js"></script>
+</body>
+</html>
